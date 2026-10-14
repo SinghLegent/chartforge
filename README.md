@@ -27,10 +27,11 @@ Open http://localhost:3000
 
 ## Deploy to Vercel
 
-1. This repo is already on GitHub
-2. Go to https://vercel.com → Sign in with GitHub
-3. Add New Project → import chartforge
-4. Deploy
+1. Import this repo at https://vercel.com/new
+2. Framework: Next.js (auto)
+3. Deploy
+
+Node.js 20+ required.
 
 ## Data sources
 
