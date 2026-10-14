@@ -1,5 +1,6 @@
 "use client";
 
+import type { ElementType } from "react";
 import {
   MousePointer2,
   TrendingUp,
@@ -28,7 +29,7 @@ type Props = {
   onClear?: () => void;
 };
 
-const TOOLS: { id: DrawingTool; label: string; icon: React.ElementType }[] = [
+const TOOLS: { id: DrawingTool; label: string; icon: ElementType }[] = [
   { id: "cursor", label: "Cursor", icon: MousePointer2 },
   { id: "trendline", label: "Trend line", icon: TrendingUp },
   { id: "horizontal", label: "Horizontal line", icon: Minus },
