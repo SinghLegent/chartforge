@@ -1,12 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const YAHOO_MAP: Record<string, string> = {
-  AAPL: "AAPL", TSLA: "TSLA", MSFT: "MSFT", GOOGL: "GOOGL",
-  AMZN: "AMZN", NVDA: "NVDA", META: "META", NFLX: "NFLX",
-  SPX: "^GSPC", NDX: "^NDX", DJI: "^DJI",
-  EURUSD: "EURUSD=X", GBPUSD: "GBPUSD=X", USDJPY: "USDJPY=X",
-  AUDUSD: "AUDUSD=X", USDCAD: "USDCAD=X", USDCHF: "USDCHF=X",
-  XAUUSD: "GC=F", OIL: "CL=F",
+  AAPL: "AAPL",
+  TSLA: "TSLA",
+  MSFT: "MSFT",
+  GOOGL: "GOOGL",
+  AMZN: "AMZN",
+  NVDA: "NVDA",
+  META: "META",
+  NFLX: "NFLX",
+  SPX: "^GSPC",
+  NDX: "^NDX",
+  DJI: "^DJI",
+  EURUSD: "EURUSD=X",
+  GBPUSD: "GBPUSD=X",
+  USDJPY: "USDJPY=X",
+  AUDUSD: "AUDUSD=X",
+  USDCAD: "USDCAD=X",
+  USDCHF: "USDCHF=X",
+  XAUUSD: "GC=F",
+  OIL: "CL=F",
 };
 
 const INTERVAL_MAP: Record<string, { interval: string; range: string }> = {
@@ -32,11 +45,18 @@ export async function GET(req: NextRequest) {
 
   try {
     const res = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; ChartForge/1.0)" },
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept: "application/json",
+      },
       next: { revalidate: 30 },
     });
     if (!res.ok) {
-      return NextResponse.json({ error: `Yahoo ${res.status}` }, { status: res.status });
+      return NextResponse.json(
+        { error: `Yahoo ${res.status}` },
+        { status: res.status }
+      );
     }
     const json = await res.json();
     const result = json?.chart?.result?.[0];
@@ -56,10 +76,10 @@ export async function GET(req: NextRequest) {
       if (closes[i] == null || opens[i] == null) continue;
       bars.push({
         time: timestamps[i],
-        open: opens[i],
-        high: highs[i] ?? closes[i],
-        low: lows[i] ?? closes[i],
-        close: closes[i],
+        open: opens[i]!,
+        high: highs[i] ?? closes[i]!,
+        low: lows[i] ?? closes[i]!,
+        close: closes[i]!,
         volume: volumes[i] ?? 0,
       });
     }

@@ -1,4 +1,4 @@
-// Datafeed: Binance (crypto) + Yahoo Finance (stocks/forex/indices). Synthetic fallback.
+// Datafeed: multi-source crypto + Yahoo stocks/forex. Realistic synthetic fallback.
 
 export type Bar = {
   time: number;
@@ -60,31 +60,67 @@ export function getSymbol(ticker: string): SymbolInfo | undefined {
   return SYMBOLS.find((s) => s.ticker.toUpperCase() === ticker.toUpperCase());
 }
 
+/** Seeded PRNG for stable-looking synthetic series */
+function mulberry32(a: number) {
+  return function () {
+    let t = (a += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 function syntheticHistory(ticker: string, interval: string, bars: number): Bar[] {
   const seed = ticker.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  const rnd = mulberry32(seed * 9973 + bars);
+
   let price = 100 + (seed % 400);
   if (ticker.includes("BTC")) price = 82000;
-  if (ticker.includes("ETH")) price = 2400;
-  if (ticker.includes("EUR") || ticker.includes("GBP")) price = 1.08;
+  else if (ticker.includes("ETH")) price = 2400;
+  else if (ticker.includes("SOL")) price = 145;
+  else if (ticker.includes("EUR") || ticker.includes("GBP") || ticker.includes("AUD"))
+    price = 1.08;
+  else if (ticker.includes("JPY")) price = 149;
+  else if (ticker === "AAPL") price = 230;
+  else if (ticker === "TSLA") price = 250;
+  else if (ticker === "NVDA") price = 130;
+  else if (ticker === "SPX") price = 5800;
+  else if (ticker === "XAUUSD") price = 2650;
+  else if (ticker === "OIL") price = 72;
+
   const now = Math.floor(Date.now() / 1000);
   const stepMap: Record<string, number> = {
-    "1m": 60, "5m": 300, "15m": 900, "1H": 3600, "4H": 14400, "1D": 86400, "1W": 604800,
+    "1m": 60,
+    "5m": 300,
+    "15m": 900,
+    "1H": 3600,
+    "4H": 14400,
+    "1D": 86400,
+    "1W": 604800,
   };
   const step = stepMap[interval] || 86400;
   const result: Bar[] = [];
   let t = now - bars * step;
+  let drift = 0;
+
   for (let i = 0; i < bars; i++) {
-    const vol = price * 0.008;
-    const change = (Math.sin(i * 0.3 + seed) + Math.cos(i * 0.17) * 0.6) * vol;
+    // random walk + mild trend
+    drift += (rnd() - 0.48) * 0.0004;
+    const vol = price * (0.004 + rnd() * 0.008);
+    const change = (rnd() - 0.5 + drift) * vol * 2;
     const open = price;
-    const close = price + change;
+    const close = Math.max(price * 0.5, price + change);
+    const wickUp = rnd() * vol;
+    const wickDn = rnd() * vol;
+    const high = Math.max(open, close) + wickUp;
+    const low = Math.min(open, close) - wickDn;
     result.push({
       time: t,
-      open: +open.toFixed(4),
-      high: +(Math.max(open, close) + Math.abs(change) * 0.4).toFixed(4),
-      low: +(Math.min(open, close) - Math.abs(change) * 0.4).toFixed(4),
-      close: +close.toFixed(4),
-      volume: 1000 + Math.abs(Math.sin(i + seed)) * 5000,
+      open: +open.toFixed(ticker.includes("USD") && price < 10 ? 5 : 2),
+      high: +high.toFixed(ticker.includes("USD") && price < 10 ? 5 : 2),
+      low: +low.toFixed(ticker.includes("USD") && price < 10 ? 5 : 2),
+      close: +close.toFixed(ticker.includes("USD") && price < 10 ? 5 : 2),
+      volume: Math.round(500 + rnd() * 20000),
     });
     price = close;
     t += step;
@@ -102,21 +138,25 @@ export function getHistory(ticker: string, interval = "1D", bars = 200): Bar[] {
   return syntheticHistory(ticker, interval, bars);
 }
 
-async function fetchBinance(binanceSymbol: string, interval: string, limit: number): Promise<Bar[]> {
+async function fetchBinance(
+  binanceSymbol: string,
+  interval: string,
+  limit: number
+): Promise<Bar[]> {
   const url = `/api/klines?symbol=${encodeURIComponent(binanceSymbol)}&interval=${encodeURIComponent(interval)}&limit=${limit}`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Binance ${res.status}`);
   const data = await res.json();
-  if (data.error) throw new Error(data.error);
+  if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
+  if (!Array.isArray(data) || data.length === 0) throw new Error("empty");
   return data as Bar[];
 }
 
 async function fetchYahoo(ticker: string, interval: string): Promise<Bar[]> {
   const url = `/api/yahoo?symbol=${encodeURIComponent(ticker)}&interval=${encodeURIComponent(interval)}`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Yahoo ${res.status}`);
   const data = await res.json();
-  if (data.error) throw new Error(data.error);
+  if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
+  if (!Array.isArray(data) || data.length === 0) throw new Error("empty");
   return data as Bar[];
 }
 
@@ -128,7 +168,7 @@ export async function getHistoryAsync(
   const key = `${ticker}|${interval}|${bars}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.ts < CACHE_TTL_MS) {
-    return { bars: hit.bars, source: hit.source as any };
+    return { bars: hit.bars, source: hit.source as "binance" | "yahoo" | "synthetic" };
   }
 
   const info = getSymbol(ticker);
@@ -136,22 +176,18 @@ export async function getHistoryAsync(
   if (info?.binanceSymbol) {
     try {
       const data = await fetchBinance(info.binanceSymbol, interval, bars);
-      if (data.length > 0) {
-        cache.set(key, { bars: data, ts: Date.now(), source: "binance" });
-        return { bars: data, source: "binance" };
-      }
+      cache.set(key, { bars: data, ts: Date.now(), source: "binance" });
+      return { bars: data, source: "binance" };
     } catch (e) {
-      console.warn("Binance failed:", e);
+      console.warn("Crypto API failed:", e);
     }
   }
 
   if (info?.yahoo) {
     try {
       const data = await fetchYahoo(ticker, interval);
-      if (data.length > 0) {
-        cache.set(key, { bars: data, ts: Date.now(), source: "yahoo" });
-        return { bars: data, source: "yahoo" };
-      }
+      cache.set(key, { bars: data, ts: Date.now(), source: "yahoo" });
+      return { bars: data, source: "yahoo" };
     } catch (e) {
       console.warn("Yahoo failed:", e);
     }
