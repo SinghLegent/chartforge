@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 
-// lightweight-charts touches window — load only on client
 const Chart = dynamic(() => import("@/components/Chart"), {
   ssr: false,
   loading: () => (
@@ -41,7 +40,9 @@ const CHART_TYPES = [
 export default function SuperchartsPage() {
   const [symbol, setSymbol] = useState("BTCUSD");
   const [interval, setInterval] = useState("1D");
-  const [chartType, setChartType] = useState<"candlestick" | "hollow" | "heikin_ashi" | "line" | "area" | "renko">("candlestick");
+  const [chartType, setChartType] = useState<
+    "candlestick" | "hollow" | "heikin_ashi" | "line" | "area" | "renko"
+  >("candlestick");
   const [tool, setTool] = useState<DrawingTool>("cursor");
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
@@ -49,11 +50,18 @@ export default function SuperchartsPage() {
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [watchlistOpen, setWatchlistOpen] = useState(false);
-  const [watchlist, setWatchlist] = useState<string[]>(["BTCUSD", "ETHUSD", "AAPL", "EURUSD"]);
+  const [watchlist, setWatchlist] = useState<string[]>([
+    "BTCUSD",
+    "ETHUSD",
+    "AAPL",
+    "EURUSD",
+  ]);
   const [layoutOpen, setLayoutOpen] = useState(false);
   const [grid, setGrid] = useState(1);
   const [cmdOpen, setCmdOpen] = useState(false);
-  const [dataSource, setDataSource] = useState<"binance" | "yahoo" | "synthetic">("synthetic");
+  const [dataSource, setDataSource] = useState<
+    "binance" | "yahoo" | "synthetic"
+  >("synthetic");
   const [extraSymbols] = useState(["ETHUSD", "AAPL", "EURUSD"]);
 
   const chartAreaRef = useRef<HTMLDivElement>(null);
@@ -187,126 +195,141 @@ export default function SuperchartsPage() {
   ];
 
   return (
-    <div className="flex flex-col h-screen bg-bg text-text">
-      <header className="h-[40px] flex items-center gap-2 px-2 border-b border-border bg-surface shrink-0">
-        <span className="text-sm font-semibold text-strong tracking-tight px-2">
-          ChartForge
-        </span>
-        <div className="w-px h-5 bg-border" />
-        <SymbolSearch current={symbol} onSelect={setSymbol} />
-        <div className="flex items-center gap-0.5 ml-1">
-          {INTERVALS.map((iv) => (
-            <button
-              key={iv}
-              onClick={() => setInterval(iv)}
-              className={clsx(
-                "px-2 h-7 rounded text-xs font-medium",
-                interval === iv
-                  ? "bg-accent text-on-accent"
-                  : "text-muted hover:text-text hover:bg-surface-elevated"
-              )}
-            >
-              {iv}
-            </button>
-          ))}
-        </div>
-        <div className="w-px h-5 bg-border" />
-        <div className="flex items-center gap-0.5">
-          {CHART_TYPES.map((ct) => {
-            const Icon = ct.icon;
-            return (
+    <div
+      className="flex flex-col bg-bg text-text"
+      style={{
+        height: "100dvh",
+        paddingTop: "var(--safe-top)",
+        paddingBottom: "var(--safe-bottom)",
+      }}
+    >
+      {/* Top toolbar — scrolls horizontally on small screens */}
+      <header className="h-10 sm:h-[40px] flex items-center border-b border-border bg-surface shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 px-1.5 sm:px-2 min-w-0 flex-1 overflow-x-auto scrollbar-none">
+          <span className="text-sm font-semibold text-strong tracking-tight px-1.5 shrink-0 hidden xs:inline sm:inline">
+            ChartForge
+          </span>
+          <div className="w-px h-5 bg-border shrink-0 hidden sm:block" />
+          <div className="shrink-0">
+            <SymbolSearch current={symbol} onSelect={setSymbol} />
+          </div>
+
+          <div className="flex items-center gap-0.5 shrink-0">
+            {INTERVALS.map((iv) => (
               <button
-                key={ct.id}
-                onClick={() => setChartType(ct.id)}
-                title={ct.label}
+                key={iv}
+                onClick={() => setInterval(iv)}
                 className={clsx(
-                  "p-1.5 rounded",
-                  chartType === ct.id
-                    ? "bg-accent/20 text-accent"
+                  "px-1.5 sm:px-2 h-7 rounded text-[11px] sm:text-xs font-medium shrink-0",
+                  interval === iv
+                    ? "bg-accent text-on-accent"
                     : "text-muted hover:text-text hover:bg-surface-elevated"
                 )}
               >
-                <Icon size={16} />
+                {iv}
               </button>
-            );
-          })}
+            ))}
+          </div>
+
+          <div className="w-px h-5 bg-border shrink-0" />
+
+          <div className="flex items-center gap-0.5 shrink-0">
+            {CHART_TYPES.map((ct) => {
+              const Icon = ct.icon;
+              return (
+                <button
+                  key={ct.id}
+                  onClick={() => setChartType(ct.id)}
+                  title={ct.label}
+                  className={clsx(
+                    "p-1.5 rounded shrink-0",
+                    chartType === ct.id
+                      ? "bg-accent/20 text-accent"
+                      : "text-muted hover:text-text hover:bg-surface-elevated"
+                  )}
+                >
+                  <Icon size={15} />
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="w-px h-5 bg-border shrink-0" />
+
+          <button
+            onClick={() => setCmdOpen(true)}
+            className="flex items-center gap-1 px-2 h-7 rounded text-xs text-muted hover:text-text hover:bg-surface-elevated shrink-0"
+            title="Commands"
+          >
+            <Search size={14} />
+          </button>
+          <button
+            onClick={() => setIndicatorsOpen(true)}
+            className={clsx(
+              "flex items-center gap-1 px-2 h-7 rounded text-xs shrink-0",
+              activeIndicators.length > 0
+                ? "text-accent bg-accent/10"
+                : "text-muted hover:text-text hover:bg-surface-elevated"
+            )}
+          >
+            <BarChart3 size={14} />
+            <span className="hidden md:inline">
+              Ind{activeIndicators.length > 0 ? ` (${activeIndicators.length})` : ""}
+            </span>
+          </button>
+          <button
+            onClick={() => setAlertsOpen(true)}
+            className="flex items-center gap-1 px-2 h-7 rounded text-xs text-muted hover:text-text hover:bg-surface-elevated shrink-0"
+          >
+            <Bell size={14} />
+          </button>
+          <button
+            onClick={() => setWatchlistOpen(true)}
+            className="flex items-center gap-1 px-2 h-7 rounded text-xs text-muted hover:text-text hover:bg-surface-elevated shrink-0"
+          >
+            <Star size={14} />
+          </button>
+          <div className="shrink-0">
+            <ReplayControls
+              active={replayActive}
+              playing={replayPlaying}
+              speed={replaySpeed}
+              progress={replayProgress}
+              onStart={() => {
+                setReplayActive(true);
+                setReplayIdx(Math.floor(replayBars.length * 0.6));
+              }}
+              onPlay={() => setReplayPlaying(true)}
+              onPause={() => setReplayPlaying(false)}
+              onStep={() =>
+                setReplayIdx((i) => Math.min(i + 1, replayBars.length - 1))
+              }
+              onSpeedChange={setReplaySpeed}
+              onExit={() => {
+                setReplayActive(false);
+                setReplayPlaying(false);
+              }}
+            />
+          </div>
+          <button
+            onClick={() => setLayoutOpen(true)}
+            className={clsx(
+              "p-1.5 rounded shrink-0",
+              grid > 1
+                ? "text-accent bg-accent/10"
+                : "text-muted hover:text-text hover:bg-surface-elevated"
+            )}
+            title="Layouts"
+          >
+            <LayoutGrid size={15} />
+          </button>
+          <button
+            className="p-1.5 rounded text-muted hover:text-text hover:bg-surface-elevated shrink-0 hidden sm:inline-flex"
+            title="Settings"
+          >
+            <Settings size={15} />
+          </button>
         </div>
-        <div className="flex-1" />
-        <button
-          onClick={() => setCmdOpen(true)}
-          className="flex items-center gap-1.5 px-2.5 h-7 rounded text-xs text-muted hover:text-text hover:bg-surface-elevated"
-          title="Cmd+K"
-        >
-          <Search size={14} />
-          <span className="hidden sm:inline">Commands</span>
-        </button>
-        <button
-          onClick={() => setIndicatorsOpen(true)}
-          className={clsx(
-            "flex items-center gap-1.5 px-2.5 h-7 rounded text-xs",
-            activeIndicators.length > 0
-              ? "text-accent bg-accent/10"
-              : "text-muted hover:text-text hover:bg-surface-elevated"
-          )}
-        >
-          <BarChart3 size={14} />
-          <span>
-            Indicators
-            {activeIndicators.length > 0 ? ` (${activeIndicators.length})` : ""}
-          </span>
-        </button>
-        <button
-          onClick={() => setAlertsOpen(true)}
-          className="flex items-center gap-1.5 px-2.5 h-7 rounded text-xs text-muted hover:text-text hover:bg-surface-elevated"
-        >
-          <Bell size={14} />
-          <span>Alert</span>
-        </button>
-        <button
-          onClick={() => setWatchlistOpen(true)}
-          className="flex items-center gap-1.5 px-2.5 h-7 rounded text-xs text-muted hover:text-text hover:bg-surface-elevated"
-        >
-          <Star size={14} />
-          <span>Watchlist</span>
-        </button>
-        <ReplayControls
-          active={replayActive}
-          playing={replayPlaying}
-          speed={replaySpeed}
-          progress={replayProgress}
-          onStart={() => {
-            setReplayActive(true);
-            setReplayIdx(Math.floor(replayBars.length * 0.6));
-          }}
-          onPlay={() => setReplayPlaying(true)}
-          onPause={() => setReplayPlaying(false)}
-          onStep={() =>
-            setReplayIdx((i) => Math.min(i + 1, replayBars.length - 1))
-          }
-          onSpeedChange={setReplaySpeed}
-          onExit={() => {
-            setReplayActive(false);
-            setReplayPlaying(false);
-          }}
-        />
-        <button
-          onClick={() => setLayoutOpen(true)}
-          className={clsx(
-            "p-1.5 rounded",
-            grid > 1
-              ? "text-accent bg-accent/10"
-              : "text-muted hover:text-text hover:bg-surface-elevated"
-          )}
-          title="Layouts"
-        >
-          <LayoutGrid size={16} />
-        </button>
-        <button
-          className="p-1.5 rounded text-muted hover:text-text hover:bg-surface-elevated"
-          title="Settings"
-        >
-          <Settings size={16} />
-        </button>
       </header>
 
       <div className="flex flex-1 min-h-0">
@@ -339,11 +362,11 @@ export default function SuperchartsPage() {
             <div
               className={clsx(
                 "w-full h-full grid gap-px bg-border",
-                grid === 2 ? "grid-cols-2" : "grid-cols-2 grid-rows-2"
+                grid === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 grid-rows-2"
               )}
             >
               {chartSymbols.map((sym, i) => (
-                <div key={sym + i} className="relative bg-bg min-h-0">
+                <div key={sym + i} className="relative bg-bg min-h-[200px] sm:min-h-0">
                   <div className="absolute top-1 left-2 z-20 text-xs font-medium text-muted bg-surface/80 px-1.5 py-0.5 rounded">
                     {sym}
                   </div>
@@ -359,45 +382,24 @@ export default function SuperchartsPage() {
               ))}
             </div>
           )}
+          {tool !== "cursor" && (
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-30 px-3 py-1 rounded-full bg-surface-elevated border border-border text-xs text-muted pointer-events-none">
+              Drawing: <span className="text-accent">{tool}</span> — drag on chart
+            </div>
+          )}
         </main>
       </div>
 
-      <footer className="h-6 flex items-center px-3 border-t border-border bg-surface text-xs text-muted shrink-0">
-        <span className="flex items-center gap-1">
-          <Clock size={11} /> {new Date().toLocaleString()}
-        </span>
-        <span className="mx-2">·</span>
-        <span>{symbol}</span>
-        <span className="mx-2">·</span>
-        <span>{interval}</span>
-        {activeIndicators.length > 0 && (
-          <>
-            <span className="mx-2">·</span>
-            <span className="text-accent">{activeIndicators.join(", ")}</span>
-          </>
-        )}
-        {replayActive && (
-          <>
-            <span className="mx-2">·</span>
-            <span className="text-warning">
-              Replay {Math.round(replayProgress)}%
-            </span>
-          </>
-        )}
-        <span className="mx-2">·</span>
-        <span
-          className={
-            dataSource === "synthetic" ? "text-warning" : "text-up"
-          }
-        >
+      <footer className="h-6 flex items-center px-2 sm:px-3 border-t border-border bg-surface text-[10px] sm:text-xs text-muted shrink-0 overflow-hidden">
+        <span className="truncate">
+          {symbol} · {interval}
           {dataSource === "binance"
-            ? "Live · Binance"
+            ? " · Live Binance"
             : dataSource === "yahoo"
-              ? "Live · Yahoo"
-              : "Demo data"}
+              ? " · Live Yahoo"
+              : " · Demo"}
+          {drawings.length > 0 ? ` · ${drawings.length} drawings` : ""}
         </span>
-        <span className="mx-2">·</span>
-        <span className="text-muted">⌘K</span>
       </footer>
 
       <IndicatorsPanel
